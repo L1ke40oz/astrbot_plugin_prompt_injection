@@ -1,14 +1,54 @@
-# astrbot-plugin-helloworld
+# astrbot_plugin_prompt_injection
 
-AstrBot 插件模板 / A template plugin for AstrBot plugin feature
+AstrBot 系统提示词注入插件。
 
-> [!NOTE]
-> This repo is just a template of [AstrBot](https://github.com/AstrBotDevs/AstrBot) Plugin.
-> 
-> [AstrBot](https://github.com/AstrBotDevs/AstrBot) is an agentic assistant for both personal and group conversations. It can be deployed across dozens of mainstream instant messaging platforms, including QQ, Telegram, Feishu, DingTalk, Slack, LINE, Discord, Matrix, etc. In addition, it provides a reliable and extensible conversational AI infrastructure for individuals, developers, and teams. Whether you need a personal AI companion, an intelligent customer support agent, an automation assistant, or an enterprise knowledge base, AstrBot enables you to quickly build AI applications directly within your existing messaging workflows.
+## 功能说明
 
-# Supports
+本插件会在每次 LLM 请求发送前，读取插件配置中的 `system_prompts` 列表，并将其中的多条提示词按顺序追加到本次请求的 `system prompt` 末尾。
 
-- [AstrBot Repo](https://github.com/AstrBotDevs/AstrBot)
-- [AstrBot Plugin Development Docs (Chinese)](https://docs.astrbot.app/dev/star/plugin-new.html)
-- [AstrBot Plugin Development Docs (English)](https://docs.astrbot.app/en/dev/star/plugin-new.html)
+配置为空时，插件不会注入任何内容。
+
+## 配置项
+
+本插件使用 `_conf_schema.json` 提供以下配置：
+
+- `system_prompts`
+  - 类型：`list[string]`
+  - 默认值：`[]`
+  - 说明：需要注入到 `system prompt` 中的多条提示词
+
+处理规则：
+- 按配置顺序注入
+- 空白字符串会被忽略
+- 非字符串项会被忽略
+- 多条提示词之间使用空行分隔
+
+## 示例
+
+```json
+{
+  "system_prompts": [
+    "你需要优先使用中文回答。",
+    "回答代码问题时先给出可执行方案，再补充说明。"
+  ]
+}
+```
+
+注入效果示意：
+
+```text
+<原有 system prompt>
+你需要优先使用中文回答。
+
+回答代码问题时先给出可执行方案，再补充说明。
+```
+
+## 使用场景
+
+- 为特定机器人统一追加行为约束
+- 为不同会话场景追加固定提示词
+- 在不改动主插件逻辑的前提下增强 system prompt
+
+## 说明
+
+本插件当前采用“直接追加”的方式修改 `system prompt`，不会改写用户消息内容，也不会覆盖原有系统提示词。

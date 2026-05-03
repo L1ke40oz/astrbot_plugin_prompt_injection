@@ -1,24 +1,37 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.event import AstrMessageEvent
+from astrbot.api.event.filter import on_llm_request
 from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
+from astrbot.core.provider.entities import ProviderRequest
 
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
-class MyPlugin(Star):
-    def __init__(self, context: Context):
-        super().__init__(context)
 
-    async def initialize(self):
-        """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
+@register("prompt_injection", "YourName", "系统提示词注入插件", "1.0.0")
+class PromptInjectionPlugin(Star):
+    def __init__(self, context: Context, config: dict = None):
+        super().__init__(context, config)
+        self.config = config or {}
 
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
+    def _get_system_prompts(self) -> list[str]:
+        configured_prompts = self.config.get("system_prompts", [])
+        if not isinstance(configured_prompts, list):
+            return []
 
-    async def terminate(self):
-        """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
+        prompts = []
+        for prompt in configured_prompts:
+            if not isinstance(prompt, str):
+                continue
+            normalized_prompt = prompt.strip()
+            if normalized_prompt:
+                prompts.append(normalized_prompt)
+        return prompts
+
+    @on_llm_request()
+    async def on_llm_req(self, event: AstrMessageEvent, request: ProviderRequest):
+        prompts = self._get_system_prompts()
+        if not prompts:
+            return
+
+        injected_prompt = "\n\n".join(prompts)
+        if request.system_prompt:
+            request.system_prompt += f"\n{injected_prompt}"
+        else:
+            request.system_prompt = injected_prompt

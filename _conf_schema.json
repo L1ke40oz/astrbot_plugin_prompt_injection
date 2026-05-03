@@ -1,0 +1,11 @@
+{
+  "system_prompts": {
+    "description": "系统提示词列表",
+    "hint": "可添加多条系统提示词，按填写顺序依次注入至System prompt；空白项会被忽略",
+    "type": "list",
+    "default": [],
+    "items": {
+      "type": "string"
+    }
+  }
+}
